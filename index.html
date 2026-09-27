@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Asinhrom Physics Hub — Академия Физики</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                 "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+    color: #1d1d1f;
+    background: #f5f5f7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  .bg-canvas {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden;
+    background:
+      radial-gradient(1200px 800px at 10% -10%, #ffe9f1 0%, transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, #e6f0ff 0%, transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, #eafff4 0%, transparent 55%),
+      linear-gradient(180deg, #fbfbfd 0%, #f2f2f5 100%);
+  }
+  .bg-canvas::before, .bg-canvas::after {
+    content: ""; position: absolute; width: 520px; height: 520px;
+    border-radius: 50%; filter: blur(80px); opacity: .55;
+    animation: float 18s ease-in-out infinite;
+  }
+  .bg-canvas::before { background: radial-gradient(circle, #ffd3e1, transparent 70%); top: -120px; left: -120px; }
+  .bg-canvas::after  { background: radial-gradient(circle, #cfe2ff, transparent 70%); bottom: -160px; right: -120px; animation-delay: -9s; }
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(40px, -30px) scale(1.08); }
+  }
+
+  .screen {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 24px; opacity: 1; transform: translateY(0);
+    transition: opacity .6s ease, transform .6s ease, visibility .6s; visibility: visible;
+  }
+  .screen.hidden { opacity: 0; transform: translateY(18px); visibility: hidden; pointer-events: none; }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border-radius: 24px;
+  }
+
+  /* ---------- Welcome ---------- */
+  #welcome-screen .welcome-card {
+    width: min(460px, 100%); padding: 44px 36px 36px; text-align: center;
+  }
+  .brand-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.04); font-size: 12px;
+    letter-spacing: .08em; text-transform: uppercase; color: #6e6e73; margin-bottom: 18px;
+  }
+  .brand-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #0a84ff; box-shadow: 0 0 10px #0a84ff; }
+  .welcome-card h1 {
+    font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px;
+    background: linear-gradient(180deg, #1d1d1f 0%, #4a4a4f 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .welcome-card p { margin: 0 0 28px; color: #6e6e73; font-size: 15px; line-height: 1.5; }
+  .input-wrap { display: flex; flex-direction: column; gap: 14px; }
+  .text-input {
+    width: 100%; padding: 16px 18px; font-size: 16px; border-radius: 14px;
+    border: 1px solid rgba(0, 0, 0, 0.08); background: rgba(255, 255, 255, 0.8);
+    outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
+    color: #1d1d1f; font-family: inherit;
+  }
+  .text-input:focus { border-color: rgba(0, 0, 0, 0.25); box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05); background: #fff; }
+
+  .btn-matte {
+    appearance: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: 15px; font-weight: 500; letter-spacing: -0.01em;
+    padding: 14px 22px; border-radius: 999px; background: #1d1d1f; color: #fff;
+    transition: transform .15s ease, background .2s ease, box-shadow .2s ease, opacity .2s;
+  }
+  .btn-matte:hover:not(:disabled) { background: #000; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .btn-matte:active:not(:disabled) { transform: translateY(0); }
+  .btn-matte:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    appearance: none; border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px); color: #1d1d1f; font-family: inherit;
+    font-size: 13px; font-weight: 500; padding: 10px 16px; border-radius: 999px;
+    cursor: pointer; transition: background .2s, border-color .2s, transform .15s;
+  }
+  .btn-ghost:hover { background: #fff; border-color: rgba(0,0,0,.18); transform: translateY(-1px); }
+
+  /* ---------- Hub ---------- */
+  #main-hub { display: block; padding: 0; align-items: stretch; justify-content: stretch; overflow-y: auto; }
+  .hub-shell { min-height: 100vh; display: flex; flex-direction: column; }
+  .hub-header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    gap: 16px;
+  }
+  .hub-logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; flex-shrink: 0; }
+  .hub-logo .logo-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #1d1d1f 0%, #4a4a4f 100%);
+    display: grid; place-items: center; color: #fff; font-size: 14px; font-weight: 700;
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex; gap: 4px; padding: 4px;
+    background: rgba(0, 0, 0, 0.04); border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    appearance: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 500; padding: 8px 18px; border-radius: 999px;
+    background: transparent; color: #6e6e73;
+    transition: background .25s ease, color .25s ease, transform .15s;
+  }
+  .tab-btn:hover { color: #1d1d1f; }
+  .tab-btn.active {
+    background: #fff; color: #1d1d1f;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 0 rgba(255,255,255,.9) inset;
+  }
+
+  .hub-content { flex: 1; padding: 44px 32px 80px; max-width: 1280px; width: 100%; margin: 0 auto; }
+
+  .greeting-block { margin-bottom: 36px; }
+  .greeting-block h2 {
+    font-size: clamp(26px, 3.6vw, 40px); font-weight: 700;
+    letter-spacing: -0.025em; margin: 0 0 10px; line-height: 1.1;
+  }
+  .greeting-block .subtitle { color: #6e6e73; font-size: 15px; margin: 0; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500;
+    background: rgba(0, 0, 0, 0.04); color: #6e6e73; margin-bottom: 14px;
+  }
+  .status-pill.founder {
+    background: linear-gradient(90deg, rgba(255,215,0,.18), rgba(255,170,0,.18), rgba(255,215,0,.18));
+    background-size: 200% 100%; animation: goldShift 3s linear infinite;
+    color: #8a6a00; border: 1px solid rgba(212, 175, 55, 0.35);
+  }
+  .status-pill.founder .crown { animation: crownPulse 2.2s ease-in-out infinite; display: inline-block; }
+  @keyframes goldShift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+  @keyframes crownPulse { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-2px) rotate(4deg); } }
+
+  /* ---------- Tab panels ---------- */
+  .tab-panel { display: none; animation: panelIn .5s cubic-bezier(.2,.8,.2,1); }
+  .tab-panel.active { display: block; }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---------- Modules grid ---------- */
+  .modules-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .module-card {
+    position: relative; padding: 24px; cursor: pointer; text-align: left;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s ease, border-color .35s;
+    opacity: 0; transform: translateY(24px);
+    animation: cardIn .7s cubic-bezier(.2,.8,.2,1) forwards;
+    overflow: hidden;
+  }
+  .module-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.08), 0 1px 0 rgba(255,255,255,.9) inset;
+    border-color: rgba(255,255,255,.9);
+  }
+  .module-card .card-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center; margin-bottom: 14px;
+    font-size: 20px; font-weight: 600;
+    background: linear-gradient(135deg, #1d1d1f, #3a3a3c); color: #fff;
+  }
+  .module-card h3 { margin: 0 0 6px; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+  .module-card p { margin: 0 0 14px; color: #6e6e73; font-size: 13px; line-height: 1.5; }
+  .card-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: #1d1d1f; }
+  .card-link .arrow { transition: transform .25s; }
+  .module-card:hover .card-link .arrow { transform: translateX(4px); }
+
+  @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+
+  /* ---------- Quiz cards ---------- */
+  .quizzes-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+  }
+  .quiz-card {
+    padding: 26px; cursor: pointer; text-align: left;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s ease;
+    opacity: 0; transform: translateY(24px);
+    animation: cardIn .7s cubic-bezier(.2,.8,.2,1) forwards;
+    position: relative; overflow: hidden;
+  }
+  .quiz-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,.08); }
+  .quiz-card .quiz-num {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: #86868b; margin-bottom: 10px;
+  }
+  .quiz-card h3 { margin: 0 0 8px; font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
+  .quiz-card p { margin: 0 0 18px; color: #6e6e73; font-size: 13px; line-height: 1.5; }
+  .quiz-meta { display: flex; align-items: center; gap: 14px; font-size: 12px; color: #6e6e73; flex-wrap: wrap; }
+  .quiz-meta .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.04);
+  }
+  .quiz-card .best-score {
+    position: absolute; top: 18px; right: 18px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    background: rgba(52, 199, 89, 0.12); color: #1b7a3a;
+  }
+  .quiz-card .saved-badge {
+    position: absolute; top: 18px; left: 18px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    background: rgba(10, 132, 255, 0.12); color: #0a58ca;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+
+  /* ---------- Knowledge level ---------- */
+  .level-summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 28px;
+  }
+  .summary-card {
+    padding: 22px; text-align: center;
+    opacity: 0; transform: translateY(20px);
+    animation: cardIn .7s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  .summary-card .big-num {
+    font-size: 40px; font-weight: 700; letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #1d1d1f, #4a4a4f);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    line-height: 1;
+  }
+  .summary-card .big-label { font-size: 12px; color: #6e6e73; margin-top: 6px; letter-spacing: .05em; text-transform: uppercase; }
+
+  .topics-list { display: flex; flex-direction: column; gap: 14px; }
+  .topic-row {
+    padding: 22px 24px; display: grid;
+    grid-template-columns: 1fr auto; gap: 16px; align-items: center;
+    opacity: 0; transform: translateY(16px);
+    animation: cardIn .6s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  .topic-row .topic-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .topic-row .topic-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 18px;
+    background: linear-gradient(135deg, #1d1d1f, #3a3a3c); color: #fff; flex-shrink: 0;
+  }
+  .topic-row .topic-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .topic-row .topic-sub { font-size: 12px; color: #6e6e73; margin-top: 2px; }
+  .progress-bar {
+    height: 8px; border-radius: 999px; background: rgba(0,0,0,.05); overflow: hidden; position: relative;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 999px; width: 0;
+    transition: width 1.2s cubic-bezier(.2,.8,.2,1);
+  }
+  .progress-fill.high   { background: linear-gradient(90deg, #34c759, #30d158); }
+  .progress-fill.medium { background: linear-gradient(90deg, #ff9f0a, #ffcc00); }
+  .progress-fill.low    { background: linear-gradient(90deg, #ff3b30, #ff6b6b); }
+  .progress-fill.none   { background: linear-gradient(90deg, #d1d1d6, #aeaeb2); }
+
+  .topic-score { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; min-width: 70px; text-align: right; }
+  .topic-score.high   { color: #1b7a3a; }
+  .topic-score.medium { color: #a86300; }
+  .topic-score.low    { color: #c22b22; }
+  .topic-score.none   { color: #86868b; }
+
+  .recommendations {
+    margin-top: 28px; padding: 26px; display: grid;
+    grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  .rec-block h4 { margin: 0 0 14px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+  .rec-block ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .rec-block li {
+    padding: 10px 14px; border-radius: 12px; font-size: 13px;
+    background: rgba(255,255,255,.6); border: 1px solid rgba(0,0,0,.04);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .rec-block .dot-ind { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rec-block.strengths .dot-ind { background: #34c759; }
+  .rec-block.weaknesses .dot-ind { background: #ff3b30; }
+  .rec-block .empty-note { font-size: 13px; color: #86868b; padding: 10px 14px; }
+
+  .level-actions { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(20, 20, 22, 0.35); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s;
+  }
+  .modal-overlay.visible { opacity: 1; visibility: visible; }
+  .modal-card {
+    width: min(680px, 100%); max-height: 86vh; overflow-y: auto; padding: 36px;
+    transform: translateY(20px) scale(.98);
+    transition: transform .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .modal-overlay.visible .modal-card { transform: translateY(0) scale(1); }
+  .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .modal-header h3 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+  .modal-close {
+    flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; border: none;
+    background: rgba(0,0,0,.06); cursor: pointer; font-size: 16px; color: #1d1d1f;
+    transition: background .2s, transform .2s; display: grid; place-items: center;
+  }
+  .modal-close:hover { background: rgba(0,0,0,.12); transform: rotate(90deg); }
+
+  .modal-body p { margin: 0 0 14px; color: #424245; line-height: 1.6; font-size: 15px; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
+  .info-cell { padding: 14px; border-radius: 14px; background: rgba(255,255,255,.7); border: 1px solid rgba(0,0,0,.05); }
+  .info-cell .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #86868b; margin-bottom: 6px; }
+  .info-cell .value { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .formula-block {
+    padding: 14px 18px; border-radius: 14px; background: rgba(0,0,0,.03);
+    font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 14px;
+    margin: 10px 0; color: #1d1d1f; letter-spacing: .01em;
+  }
+
+  /* ---------- Quiz in modal ---------- */
+  .quiz-progress {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    font-size: 13px; color: #6e6e73;
+  }
+  .quiz-progress .bar { flex: 1; height: 6px; border-radius: 999px; background: rgba(0,0,0,.06); overflow: hidden; }
+  .quiz-progress .bar-fill { height: 100%; background: #1d1d1f; transition: width .4s ease; width: 0; }
+
+  .quiz-question {
+    padding: 20px; border-radius: 16px; background: rgba(255,255,255,.65);
+    border: 1px solid rgba(0,0,0,.05); margin-bottom: 14px;
+    transition: border-color .25s, background .25s;
+  }
+  .quiz-question.correct { border-color: #34c759; background: rgba(52,199,89,.08); }
+  .quiz-question.wrong   { border-color: #ff3b30; background: rgba(255,59,48,.06); }
+  .quiz-question .q-num { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #86868b; margin-bottom: 6px; }
+  .quiz-question .q-text { font-size: 15px; font-weight: 500; margin-bottom: 12px; line-height: 1.45; }
+  .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+  .quiz-option {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-radius: 10px; background: rgba(255,255,255,.7);
+    border: 1px solid rgba(0,0,0,.06); cursor: pointer; font-size: 14px;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  .quiz-option:hover { background: #fff; border-color: rgba(0,0,0,.15); transform: translateX(2px); }
+  .quiz-option input { accent-color: #1d1d1f; }
+  .quiz-option.selected { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
+  .quiz-option.selected input { accent-color: #fff; }
+
+  .quiz-feedback {
+    margin-top: 18px; padding: 16px 18px; border-radius: 14px;
+    background: rgba(255,255,255,.75); border: 1px solid rgba(0,0,0,.06);
+    font-size: 14px; display: none;
+  }
+  .quiz-feedback.show { display: block; animation: fadeIn .4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .quiz-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  .save-status {
+    margin-top: 14px; padding: 12px 16px; border-radius: 12px;
+    background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.25);
+    color: #1b7a3a; font-size: 13px; font-weight: 500;
+    display: none; align-items: center; gap: 8px;
+  }
+  .save-status.show { display: flex; animation: fadeIn .4s ease; }
+  .save-status.improved {
+    background: rgba(10, 132, 255, 0.08);
+    border-color: rgba(10, 132, 255, 0.25);
+    color: #0a58ca;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 720px) {
+    .hub-header { padding: 12px 18px; flex-wrap: wrap; }
+    .hub-logo { order: 1; }
+    .tabs { order: 3; width: 100%; justify-content: center; }
+    #resetBtnWrap { order: 2; }
+    .hub-content { padding: 28px 18px 60px; }
+    .welcome-card { padding: 36px 24px 28px; }
+    .welcome-card h1 { font-size: 28px; }
+    .modal-card { padding: 24px; }
+    .recommendations { grid-template-columns: 1fr; }
+    .tab-btn { padding: 8px 12px; font-size: 12px; }
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.3); background-clip: padding-box; border: 2px solid transparent; }
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"></div>
+
+<!-- ========== WELCOME ========== -->
+<section id="welcome-screen" class="screen">
+  <div class="welcome-card glass">
+    <div class="brand-badge"><span class="dot"></span> Asinhrom · Physics Hub</div>
+    <h1>Академия Физики</h1>
+    <p>Премиальное пространство для изучения законов Вселенной. Пожалуйста, представьтесь, чтобы продолжить.</p>
+    <div class="input-wrap">
+      <input id="user-name-input" class="text-input" type="text" placeholder="Ваше имя" autocomplete="off" maxlength="32" />
+      <button id="enter-btn" class="btn-matte">Войти в хаб →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MAIN HUB ========== -->
+<section id="main-hub" class="screen hidden">
+  <div class="hub-shell">
+    <header class="hub-header">
+      <div class="hub-logo">
+        <div class="logo-mark">A</div>
+        <span>Asinhrom Physics Hub</span>
+      </div>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="learn"    type="button">Обучение</button>
+        <button class="tab-btn"        data-tab="tests"    type="button">Тесты</button>
+        <button class="tab-btn"        data-tab="level"    type="button">Уровень знаний</button>
+      </nav>
+
+      <div id="resetBtnWrap">
+        <button id="reset-btn" class="btn-ghost">Сбросить сессию</button>
+      </div>
+    </header>
+
+    <main class="hub-content">
+      <div class="greeting-block">
+        <div id="status-pill" class="status-pill">
+          <span>●</span><span id="status-text">Студент Академии</span>
+        </div>
+        <h2 id="greeting">Добро пожаловать в Академию Физики</h2>
+        <p class="subtitle" id="greeting-sub">Выберите модуль, чтобы начать исследование.</p>
+      </div>
+
+      <!-- ===== TAB: ОБУЧЕНИЕ ===== -->
+      <div class="tab-panel active" id="panel-learn">
+        <div id="modules-grid" class="modules-grid"></div>
+      </div>
+
+      <!-- ===== TAB: ТЕСТЫ ===== -->
+      <div class="tab-panel" id="panel-tests">
+        <div id="quizzes-grid" class="quizzes-grid"></div>
+      </div>
+
+      <!-- ===== TAB: УРОВЕНЬ ЗНАНИЙ ===== -->
+      <div class="tab-panel" id="panel-level">
+        <div id="level-summary" class="level-summary"></div>
+        <div id="topics-list" class="topics-list"></div>
+        <div id="recommendations" class="recommendations glass"></div>
+        <div class="level-actions">
+          <button id="clear-results-btn" class="btn-ghost">Сбросить все результаты тестов</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ========== MODAL: MODULE ========== -->
+<div id="module-modal" class="modal-overlay">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3 id="module-modal-title">—</h3>
+      <button class="modal-close" data-close>✕</button>
+    </div>
+    <div id="module-modal-body" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- ========== MODAL: QUIZ ========== -->
+<div id="quiz-modal" class="modal-overlay">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3 id="quiz-modal-title">Тест</h3>
+      <button class="modal-close" data-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="quiz-progress">
+        <span id="quiz-progress-text">0 / 10</span>
+        <div class="bar"><div id="quiz-progress-fill" class="bar-fill"></div></div>
+      </div>
+      <form id="quiz-form" autocomplete="off"></form>
+      <div id="quiz-feedback" class="quiz-feedback"></div>
+      <div id="save-status" class="save-status">
+        <span id="save-status-icon">✓</span><span id="save-status-text">Результат сохранён</span>
+      </div>
+      <div class="quiz-actions">
+        <button type="button" id="check-quiz-btn" class="btn-matte">Проверить ответы</button>
+        <button type="button" id="reset-quiz-btn" class="btn-ghost">Пройти заново</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ================== КОНСТАНТЫ ==================
+  var STORAGE_USER    = 'asinhrom_user_name';
+  var STORAGE_RESULTS = 'asinhrom_quiz_results';
+  var ADMIN_NAME      = 'admin';
+  var ADMIN_DISPLAY   = 'Полиократ 👑';
+
+  // ================== ДАННЫЕ: МОДУЛИ (22 шт.) ==================
+  var MODULES = [
+    { id:'m01', icon:'v',  title:'Кинематика',
+      desc:'Описание движения тел без учёта причин, его вызывающих.',
+      body:
+        '<p>Кинематика — раздел механики, изучающий движение тел без учёта действующих сил. Она задаёт язык, на котором описываются траектории, скорости и ускорения.</p>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Скорость</div><div class="value">v = ds/dt</div></div>'+
+          '<div class="info-cell"><div class="label">Ускорение</div><div class="value">a = dv/dt</div></div>'+
+          '<div class="info-cell"><div class="label">Равноускоренное</div><div class="value">s = v₀t + ½at²</div></div>'+
+          '<div class="info-cell"><div class="label">Без ускорения</div><div class="value">s = v·t</div></div>'+
+        '</div>'+
+        '<p>Основные задачи кинематики — определение координат тела в любой момент времени по известным начальным условиям.</p>'
+    },
+    { id:'m02', icon:'F',  title:'Динамика',
+      desc:'Законы Ньютона и причины, вызывающие движение тел.',
+      body:
+        '<p>Динамика изучает движение тел под действием приложенных сил. Её фундамент — три закона Ньютона.</p>'+
+        '<div class="formula-block">I закон:   если ΣF = 0, то v = const (инерциальная СО)</div>'+
+        '<div class="formula-block">II закон:  F = m · a</div>'+
+        '<div class="formula-block">III закон: F₁₂ = −F₂₁</div>'+
+        '<p>Эти законы позволяют предсказывать поведение макроскопических тел с высокой точностью.</p>'
+    },
+    { id:'m03', icon:'E',  title:'Законы сохранения',
+      desc:'Энергия, импульс и момент импульса — фундаментальные инварианты.',
+      body:
+        '<p>Законы сохранения — краеугольный камень физики. Они отражают симметрии пространства-времени.</p>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Импульс</div><div class="value">p = m·v</div></div>'+
+          '<div class="info-cell"><div class="label">Энергия кин.</div><div class="value">Eₖ = ½mv²</div></div>'+
+          '<div class="info-cell"><div class="label">Энергия пот.</div><div class="value">Eₚ = mgh</div></div>'+
+          '<div class="info-cell"><div class="label">Момент</div><div class="value">L = I·ω</div></div>'+
+        '</div>'+
+        '<p>В замкнутой системе полный импульс, энергия и момент импульса сохраняются.</p>'
+    },
+    { id:'m04', icon:'G',  title:'Гравитация',
+      desc:'Всемирное тяготение и движение небесных тел.',
+      body:
+        '<p>Закон всемирного тяготения Ньютона описывает силу притяжения между любыми двумя массами.</p>'+
+        '<div class="formula-block">F = G · m₁ · m₂ / r²</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">G</div><div class="value">6.674·10⁻¹¹ Н·м²/кг²</div></div>'+
+          '<div class="info-cell"><div class="label">g на Земле</div><div class="value">≈ 9.81 м/с²</div></div>'+
+          '<div class="info-cell"><div class="label">1 косм. скорость</div><div class="value">7.9 км/с</div></div>'+
+          '<div class="info-cell"><div class="label">2 косм. скорость</div><div class="value">11.2 км/с</div></div>'+
+        '</div>'
+    },
+    { id:'m05', icon:'≡',  title:'Статика',
+      desc:'Условия равновесия тел и устойчивость конструкций.',
+      body:
+        '<p>Статика изучает условия, при которых тела находятся в равновесии.</p>'+
+        '<div class="formula-block">ΣF = 0      (равенство нулю суммы сил)</div>'+
+        '<div class="formula-block">ΣM = 0      (равенство нулю суммы моментов)</div>'+
+        '<p>Эти два условия необходимы и достаточны для равновесия твёрдого тела.</p>'
+    },
+    { id:'m06', icon:'~',  title:'Колебания',
+      desc:'Гармонические колебания, резонанс и маятники.',
+      body:
+        '<p>Колебания — периодические процессы, повторяющиеся во времени. Простейший вид — гармонические колебания.</p>'+
+        '<div class="formula-block">x(t) = A · cos(ωt + φ₀)</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Период</div><div class="value">T = 2π/ω</div></div>'+
+          '<div class="info-cell"><div class="label">Частота</div><div class="value">ν = 1/T</div></div>'+
+          '<div class="info-cell"><div class="label">Маятник мат.</div><div class="value">T = 2π√(l/g)</div></div>'+
+          '<div class="info-cell"><div class="label">Пружина</div><div class="value">T = 2π√(m/k)</div></div>'+
+        '</div>'
+    },
+    { id:'m07', icon:'∿',  title:'Волны',
+      desc:'Распространение возмущений в среде и вакууме.',
+      body:
+        '<p>Волна — процесс распространения возмущения в пространстве. Различают продольные и поперечные волны.</p>'+
+        '<div class="formula-block">v = λ · ν</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Длина волны</div><div class="value">λ</div></div>'+
+          '<div class="info-cell"><div class="label">Частота</div><div class="value">ν</div></div>'+
+          '<div class="info-cell"><div class="label">Скорость</div><div class="value">v</div></div>'+
+          '<div class="info-cell"><div class="label">Амплитуда</div><div class="value">A</div></div>'+
+        '</div>'
+    },
+    { id:'m08', icon:'♪',  title:'Звук',
+      desc:'Акустические волны и особенности слухового восприятия.',
+      body:
+        '<p>Звук — механическая волна, распространяющаяся в упругих средах (газ, жидкость, твёрдое тело).</p>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">В воздухе (20°C)</div><div class="value">≈ 343 м/с</div></div>'+
+          '<div class="info-cell"><div class="label">Диапазон слуха</div><div class="value">20 Гц — 20 кГц</div></div>'+
+          '<div class="info-cell"><div class="label">В воде</div><div class="value">≈ 1480 м/с</div></div>'+
+          '<div class="info-cell"><div class="label">В стали</div><div class="value">≈ 5900 м/с</div></div>'+
+        '</div>'
+    },
+    { id:'m09', icon:'T',  title:'Температура и тепло',
+      desc:'Тепловые явления, количество теплоты и теплоёмкость.',
+      body:
+        '<p>Температура — мера средней кинетической энергии молекул. Тепло передаётся тремя способами: теплопроводностью, конвекцией и излучением.</p>'+
+        '<div class="formula-block">Q = c · m · ΔT</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">0 °C в K</div><div class="value">273.15 K</div></div>'+
+          '<div class="info-cell"><div class="label">Вода (c)</div><div class="value">4200 Дж/(кг·К)</div></div>'+
+          '<div class="info-cell"><div class="label">Постоянная Больцмана</div><div class="value">1.38·10⁻²³ Дж/К</div></div>'+
+        '</div>'
+    },
+    { id:'m10', icon:'S',  title:'Термодинамика',
+      desc:'Три начала термодинамики, энтропия и тепловые машины.',
+      body:
+        '<p>Термодинамика описывает макроскопические системы через понятия температуры, давления, объёма и внутренней энергии.</p>'+
+        '<div class="formula-block">I начало:  Q = ΔU + A</div>'+
+        '<div class="formula-block">II начало:  ΔS ≥ 0 (в замкнутой системе)</div>'+
+        '<div class="formula-block">КПД Карно:  η = 1 − T₂/T₁</div>'+
+        '<p>Энтропия изолированной системы не убывает — это стрела времени.</p>'
+    },
+    { id:'m11', icon:'N',  title:'Молекулярная физика',
+      desc:'МКТ, уравнение состояния идеального газа.',
+      body:
+        '<p>Молекулярно-кинетическая теория связывает макроскопические свойства вещества с движением его молекул.</p>'+
+        '<div class="formula-block">pV = νRT       (уравнение Менделеева — Клапейрона)</div>'+
+        '<div class="formula-block">Eₖ = (3/2)·k·T</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">R</div><div class="value">8.314 Дж/(моль·К)</div></div>'+
+          '<div class="info-cell"><div class="label">Nₐ</div><div class="value">6.022·10²³ моль⁻¹</div></div>'+
+        '</div>'
+    },
+    { id:'m12', icon:'+',  title:'Электростатика',
+      desc:'Заряды, поля и закон Кулона.',
+      body:
+        '<p>Электростатика изучает взаимодействие неподвижных электрических зарядов.</p>'+
+        '<div class="formula-block">F = k · q₁ · q₂ / r²</div>'+
+        '<div class="formula-block">E = F / q</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">k</div><div class="value">9·10⁹ Н·м²/Кл²</div></div>'+
+          '<div class="info-cell"><div class="label">e (заряд электрона)</div><div class="value">1.6·10⁻¹⁹ Кл</div></div>'+
+          '<div class="info-cell"><div class="label">ε₀</div><div class="value">8.85·10⁻¹² Ф/м</div></div>'+
+        '</div>'
+    },
+    { id:'m13', icon:'I',  title:'Электрический ток',
+      desc:'Законы Ома, мощность и соединения проводников.',
+      body:
+        '<p>Электрический ток — упорядоченное движение заряженных частиц.</p>'+
+        '<div class="formula-block">Закон Ома:  I = U / R</div>'+
+        '<div class="formula-block">Мощность:   P = U · I = I²R</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Последовательно</div><div class="value">R = R₁ + R₂</div></div>'+
+          '<div class="info-cell"><div class="label">Параллельно</div><div class="value">1/R = 1/R₁ + 1/R₂</div></div>'+
+          '<div class="info-cell"><div class="label">Закон Джоуля–Ленца</div><div class="value">Q = I²Rt</div></div>'+
+        '</div>'
+    },
+    { id:'m14', icon:'M',  title:'Магнетизм',
+      desc:'Магнитное поле, сила Лоренца и Ампера.',
+      body:
+        '<p>Магнитное поле создаётся движущимися зарядами и действует на них.</p>'+
+        '<div class="formula-block">Fₗ = q · v · B · sin α   (сила Лоренца)</div>'+
+        '<div class="formula-block">Fₐ = I · l · B · sin α   (сила Ампера)</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Единица B</div><div class="value">Тесла (Тл)</div></div>'+
+          '<div class="info-cell"><div class="label">B Земли</div><div class="value">≈ 50 мкТл</div></div>'+
+        '</div>'
+    },
+    { id:'m15', icon:'∮',  title:'Электромагнитная индукция',
+      desc:'Явление Фарадея и правило Ленца.',
+      body:
+        '<p>Электромагнитная индукция — возникновение ЭДС при изменении магнитного потока через контур.</p>'+
+        '<div class="formula-block">ЭДС = −dΦ/dt   (закон Фарадея)</div>'+
+        '<div class="formula-block">Φ = B · S · cos α</div>'+
+        '<div class="formula-block">ЭДС самоиндукции:  ε = −L · dI/dt</div>'+
+        '<p>Это явление лежит в основе работы генераторов и трансформаторов.</p>'
+    },
+    { id:'m16', icon:'⌁',  title:'Электромагнитные волны',
+      desc:'Теория Максвелла и природа света.',
+      body:
+        '<p>Электромагнитные волны — колебания электрического и магнитного полей, распространяющиеся в пространстве.</p>'+
+        '<div class="formula-block">c = 1 / √(ε₀μ₀) ≈ 3·10⁸ м/с</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">Радиоволны</div><div class="value">> 1 мм</div></div>'+
+          '<div class="info-cell"><div class="label">Видимый свет</div><div class="value">380 — 760 нм</div></div>'+
+          '<div class="info-cell"><div class="label">Рентген</div><div class="value">0.01 — 10 нм</div></div>'+
+          '<div class="info-cell"><div class="label">Гамма</div><div class="value">< 0.01 нм</div></div>'+
+        '</div>'
+    },
+    { id:'m17', icon:'◎',  title:'Геометрическая оптика',
+      desc:'Законы отражения, преломления и линзы.',
+      body:
+        '<p>Геометрическая оптика рассматривает свет как лучи.</p>'+
+        '<div class="formula-block">Закон преломления: n₁ sin α = n₂ sin γ</div>'+
+        '<div class="formula-block">Тонкая линза: 1/F = 1/d + 1/f</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">n воздуха</div><div class="value">≈ 1.00</div></div>'+
+          '<div class="info-cell"><div class="label">n воды</div><div class="value">≈ 1.33</div></div>'+
+          '<div class="info-cell"><div class="label">n стекла</div><div class="value">≈ 1.50</div></div>'+
+          '<div class="info-cell"><div class="label">n алмаза</div><div class="value">≈ 2.42</div></div>'+
+        '</div>'
+    },
+    { id:'m18', icon:'≋',  title:'Волновая оптика',
+      desc:'Интерференция, дифракция и поляризация света.',
+      body:
+        '<p>Волновая оптика объясняет явления, связанные с волновой природой света.</p>'+
+        '<div class="formula-block">Интерф. максимум:  d sin φ = mλ</div>'+
+        '<div class="formula-block">Дифракционная решётка</div>'+
+        '<p>Поляризация — выделение колебаний определённого направления из неполяризованного света.</p>'
+    },
+    { id:'m19', icon:'γ',  title:'Специальная теория относительности',
+      desc:'Преобразования Лоренца и эквивалентность массы и энергии.',
+      body:
+        '<p>СТО Эйнштейна (1905) основана на двух постулатах: постоянстве скорости света и равноправии инерциальных СО.</p>'+
+        '<div class="formula-block">E = m · c²</div>'+
+        '<div class="formula-block">L = L₀ · √(1 − v²/c²)   (сокращение длины)</div>'+
+        '<div class="formula-block">t = t₀ / √(1 − v²/c²)   (замедление времени)</div>'
+    },
+    { id:'m20', icon:'ℏ',  title:'Квантовая физика',
+      desc:'Фотоэффект, корпускулярно-волновой дуализм, уравнение Шрёдингера.',
+      body:
+        '<p>Квантовая физика описывает поведение материи на микроуровне.</p>'+
+        '<div class="formula-block">E = h · ν</div>'+
+        '<div class="formula-block">Фотоэффект: hν = Aвых + ½mv²</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">h (Планка)</div><div class="value">6.626·10⁻³⁴ Дж·с</div></div>'+
+          '<div class="info-cell"><div class="label">ℏ</div><div class="value">h / 2π</div></div>'+
+          '<div class="info-cell"><div class="label">Принцип Гейзенберга</div><div class="value">Δx·Δp ≥ ℏ/2</div></div>'+
+        '</div>'
+    },
+    { id:'m21', icon:'☢',  title:'Ядерная физика',
+      desc:'Строение ядра, радиоактивность и ядерные реакции.',
+      body:
+        '<p>Ядерная физика изучает структуру атомных ядер и их превращения.</p>'+
+        '<div class="formula-block">Закон распада: N = N₀ · 2^(−t/T½)</div>'+
+        '<div class="formula-block">Eсвязи = Δm · c²</div>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">α-распад</div><div class="value">ядро He</div></div>'+
+          '<div class="info-cell"><div class="label">β-распад</div><div class="value">e⁻ или e⁺</div></div>'+
+          '<div class="info-cell"><div class="label">γ-излучение</div><div class="value">фотон</div></div>'+
+        '</div>'
+    },
+    { id:'m22', icon:'★',  title:'Астрономия',
+      desc:'Строение Вселенной, звёзды, галактики и космология.',
+      body:
+        '<p>Астрономия — наука о Вселенной, её объектах и эволюции.</p>'+
+        '<div class="info-grid">'+
+          '<div class="info-cell"><div class="label">1 а.е.</div><div class="value">1.496·10¹¹ м</div></div>'+
+          '<div class="info-cell"><div class="label">1 св. год</div><div class="value">9.46·10¹⁵ м</div></div>'+
+          '<div class="info-cell"><div class="label">Возраст Вселенной</div><div class="value">≈ 13.8 млрд лет</div></div>'+
+          '<div class="info-cell"><div class="label">Расст. до центра Галактики</div><div class="value">≈ 26 000 св. лет</div></div>'+
+        '</div>'+
+        '<p>Современная космология основана на теории Большого взрыва и общей теории относительности.</p>'
+    }
+  ];
+
+  // ================== ДАННЫЕ: ТЕСТЫ (5 × 10) ==================
+  var QUIZZES = [
+    {
+      id:'q_mech', topic:'mechanics',
+      title:'Механика',
+      desc:'Кинематика, динамика, законы сохранения и гравитация.',
+      icon:'F',
+      questions:[
+        { q:'Чему равно ускорение свободного падения на поверхности Земли (приблизительно)?',
+          opts:['5.5 м/с²','9.8 м/с²','12.4 м/с²','15.0 м/с²'], correct:1 },
+        { q:'Тело движется равномерно по окружности. Как направлено его ускорение?',
+          opts:['По касательной','Внешней стороне','К центру окружения','Вертикально вверх'], correct:2 },
+        { q:'Какая формула описывает второй закон Ньютона?',
+          opts:['F = m/a','F = m·a','F = a/m','F = m + a'], correct:1 },
+        { q:'Единица измерения импульса в СИ:',
+          opts:['Ньютон (Н)','Джоуль (Дж)','кг·м/с','Ватт (Вт)'], correct:2 },
+        { q:'Кинетическая энергия тела массой 2 кг при скорости 3 м/с равна:',
+          opts:['3 Дж','6 Дж','9 Дж','18 Дж'], correct:2 },
+        { q:'В замкнутой системе при столкновении сохраняется:',
+          opts:['Только кинетическая энергия','Только импульс','Импульс системы','Масса и температура'], correct:2 },
+        { q:'Первая космическая скорость у поверхности Земли примерно равна:',
+          opts:['3.5 км/с','7.9 км/с','11.2 км/с','16.7 км/с'], correct:1 },
+        { q:'Тело брошено вертикально вверх. В высшей точке траектории его скорость:',
+          opts:['Максимальна','Равна g','Равна нулю','Отрицательна'], correct:2 },
+        { q:'Сила трения скольжения зависит от:',
+          opts:['Площади соприкосновения','Скорости тела','Силы нормальной реакции','Формы тела'], correct:2 },
+        { q:'Закон всемирного тяготения утверждает, что сила притяжения:',
+          opts:['Пропорциональна r²','Обратно пропорциональна r²','Не зависит от расстояния','Пропорциональна r'], correct:1 }
+      ]
+    },
+    {
+      id:'q_osc', topic:'oscillations',
+      title:'Колебания и волны',
+      desc:'Гармонические колебания, маятники, волны и звук.',
+      icon:'~',
+      questions:[
+        { q:'Период колебаний — это:',
+          opts:['Число колебаний в секунду','Время одного полного колебания','Максимальное отклонение','Скорость волны'], correct:1 },
+        { q:'Частота колебаний измеряется в:',
+          opts:['Секундах','Герцах','Метрах','Ньютонах'], correct:1 },
+        { q:'Формула периода математического маятника:',
+          opts:['T = 2π√(m/k)','T = 2π√(l/g)','T = 2π·l/g','T = π·√(g/l)'], correct:1 },
+        { q:'Резонанс — это:',
+          opts:['Затухание колебаний','Резкое возрастание амплитуды при совпадении частот','Отражение волн','Преломление волн'], correct:1 },
+        { q:'Скорость звука в воздухе при 20 °C примерно равна:',
+          opts:['34 м/с','343 м/с','3430 м/с','300 000 км/с'], correct:1 },
+        { q:'Поперечная волна — это волна, в которой колебания:',
+          opts:['Перпендикулярны направлению распространения','Параллельны направлению распространения','Отсутствуют','Происходят по кругу'], correct:0 },
+        { q:'Длина волны связана со скоростью и частотой соотношением:',
+          opts:['λ = v + ν','λ = v / ν','λ = v · ν','λ = ν / v'], correct:1 },
+        { q:'Дифракция волн — это:',
+          opts:['Отражение','Преломление','Огибание препятствий','Интерференция'], correct:2 },
+        { q:'Интерференция — это:',
+          opts:['Наложение волн с образованием устойчивой картины','Поглощение волн','Рассеяние волн','Поляризация'], correct:0 },
+        { q:'Ультразвук — это звук с частотой:',
+          opts:['Менее 20 Гц','От 20 Гц до 20 кГц','Более 20 кГц','Ровно 440 Гц'], correct:2 }
+      ]
+    },
+    {
+      id:'q_thermo', topic:'thermo',
+      title:'Термодинамика и МКТ',
+      desc:'Температура, внутренняя энергия, начала термодинамики.',
+      icon:'T',
+      questions:[
+        { q:'Абсолютный ноль температуры равен:',
+          opts:['−273.15 °C','0 °C','−100 °C','100 K'], correct:0 },
+        { q:'Единица количества теплоты в СИ:',
+          opts:['Ватт','Джоуль','Ньютон','Паскаль'], correct:1 },
+        { q:'Первое начало термодинамики выражает закон:',
+          opts:['Сохранения заряда','Сохранения энергии','Сохранения импульса','Роста энтропии'], correct:1 },
+        { q:'Уравнение Менделеева — Клапейрона:',
+          opts:['pV = mRT','pV = νRT','p = ρRT','pV = nRT²'], correct:1 },
+        { q:'Внутренняя энергия идеального одноатомного газа:',
+          opts:['U = νRT','U = (3/2)νRT','U = (5/2)νRT','U = pV²'], correct:1 },
+        { q:'Адиабатный процесс происходит без:',
+          opts:['Изменения объёма','Теплообмена с окружающей средой','Изменения давления','Изменения температуры'], correct:1 },
+        { q:'КПД идеального цикла Карно зависит от:',
+          opts:['Рабочего вещества','Температур нагревателя и холодильника','Давления','Объёма'], correct:1 },
+        { q:'Энтропия изолированной системы при необратимых процессах:',
+          opts:['Убывает','Не изменяется','Возрастает','Осциллирует'], correct:2 },
+        { q:'Постоянная Больцмана k связывает:',
+          opts:['Давление и объём','Температуру и среднюю энергию молекулы','Массу и скорость','Заряд и потенциал'], correct:1 },
+        { q:'Теплопроводность — это:',
+          opts:['Перенос тепла потоками вещества','Перенос тепла через излучение','Перенос тепла от частицы к частице без движения вещества','Фазовый переход'], correct:2 }
+      ]
+    },
+    {
+      id:'q_em', topic:'em',
+      title:'Электричество и магнетизм',
+      desc:'Электростатика, ток, магнитное поле, индукция.',
+      icon:'I',
+      questions:[
+        { q:'Закон Кулона описывает:',
+          opts:['Силу магнитного взаимодействия','Силу электрического взаимодействия точечных зарядов','Силу тяжести','Силу упругости'], correct:1 },
+        { q:'Единица электрического сопротивления в СИ:',
+          opts:['Ампер','Вольт','Ом','Ватт'], correct:2 },
+        { q:'Закон Ома для участка цепи:',
+          opts:['I = U · R','I = U / R','U = I / R','R = I · U'], correct:1 },
+        { q:'При параллельном соединении резисторов:',
+          opts:['Сила тока одинакова','Напряжение одинаково','Сопротивления складываются','Заряд накапливается'], correct:1 },
+        { q:'Магнитное поле создаётся:',
+          opts:['Только постоянными магнитами','Движущимися электрическими зарядами','Неподвижными зарядами','Только железом'], correct:1 },
+        { q:'Единица магнитной индукции:',
+          opts:['Вебер','Тесла','Генри','Фарад'], correct:1 },
+        { q:'Сила Лоренца действует на:',
+          opts:['Неподвижный заряд','Движущийся заряд в магнитном поле','Любое тело','Только электроны'], correct:1 },
+        { q:'Закон электромагнитной индукции открыл:',
+          opts:['Кулон','Ампер','Фарадей','Ом'], correct:2 },
+        { q:'ЭДС индукции пропорциональна:',
+          opts:['Магнитному потоку','Скорости изменения магнитного потока','Сопротивлению цепи','Индуктивности'], correct:1 },
+        { q:'Трансформатор работает на основе:',
+          opts:['Электростатики','Электромагнитной индукции','Фотоэффекта','Ядерных реакций'], correct:1 }
+      ]
+    },
+    {
+      id:'q_quant', topic:'quantum',
+      title:'Оптика и квантовая физика',
+      desc:'Свет, фотоэффект, атом, квантовые явления.',
+      icon:'ℏ',
+      questions:[
+        { q:'Скорость света в вакууме равна:',
+          opts:['3·10⁵ м/с','3·10⁸ м/с','3·10¹⁰ м/с','3·10⁶ км/с'], correct:1 },
+        { q:'Закон отражения света: угол падения',
+          opts:['Больше угла отражения','Меньше угла отражения','Равен углу отражения','Не связан с ним'], correct:2 },
+        { q:'Показатель преломления воды примерно равен:',
+          opts:['1.00','1.33','1.50','2.42'], correct:1 },
+        { q:'Фотоэффект — это:',
+          opts:['Нагревание тел светом','Выбивание электронов светом с поверхности','Отражение света','Преломление света'], correct:1 },
+        { q:'Фотоэффект объяснил:',
+          opts:['Ньютон','Максвелл','Эйнштейн','Бор'], correct:2 },
+        { q:'Постоянная Планка h имеет порядок:',
+          opts:['10⁻¹⁰ Дж·с','10⁻¹⁹ Дж·с','10⁻³⁴ Дж·с','10⁻²³ Дж·с'], correct:2 },
+        { q:'Корпускулярно-волновой дуализм означает, что:',
+          opts:['Свет — только волна','Свет — только частица','Свет обладает свойствами и волны, и частицы','Свет не имеет природы'], correct:2 },
+        { q:'Модель атома с планетарной структурой предложил:',
+          opts:['Томсон','Резерфорд','Дальтон','Менделеев'], correct:1 },
+        { q:'Принцип неопределённости Гейзенберга утверждает:',
+          opts:['Энергия всегда постоянна','Невозможно одновременно точно знать координату и импульс','Скорость света переменна','Атом неделим'], correct:1 },
+        { q:'Лазерное излучение отличается:',
+          opts:['Хаотичностью','Когерентностью и монохроматичностью','Отсутствием фотонов','Только инфракрасным спектром'], correct:1 }
+      ]
+    }
+  ];
+
+  // ================== DOM ==================
+  var welcomeScreen = document.getElementById('welcome-screen');
+  var mainHub       = document.getElementById('main-hub');
+  var nameInput     = document.getElementById('user-name-input');
+  var enterBtn      = document.getElementById('enter-btn');
+  var resetBtn      = document.getElementById('reset-btn');
+  var greeting      = document.getElementById('greeting');
+  var greetingSub   = document.getElementById('greeting-sub');
+  var statusPill    = document.getElementById('status-pill');
+  var statusText    = document.getElementById('status-text');
+
+  var modulesGrid = document.getElementById('modules-grid');
+  var quizzesGrid = document.getElementById('quizzes-grid');
+
+  var moduleModal      = document.getElementById('module-modal');
+  var moduleModalTitle = document.getElementById('module-modal-title');
+  var moduleModalBody  = document.getElementById('module-modal-body');
+
+  var quizModal        = document.getElementById('quiz-modal');
+  var quizModalTitle   = document.getElementById('quiz-modal-title');
+  var quizForm         = document.getElementById('quiz-form');
+  var checkQuizBtn     = document.getElementById('check-quiz-btn');
+  var resetQuizBtn     = document.getElementById('reset-quiz-btn');
+  var quizFeedback     = document.getElementById('quiz-feedback');
+  var quizProgressText = document.getElementById('quiz-progress-text');
+  var quizProgressFill = document.getElementById('quiz-progress-fill');
+  var saveStatus       = document.getElementById('save-status');
+  var saveStatusIcon   = document.getElementById('save-status-icon');
+  var saveStatusText   = document.getElementById('save-status-text');
+
+  var levelSummaryEl = document.getElementById('level-summary');
+  var topicsListEl   = document.getElementById('topics-list');
+  var recommendationsEl = document.getElementById('recommendations');
+  var clearResultsBtn = document.getElementById('clear-results-btn');
+
+  var tabButtons = document.querySelectorAll('.tab-btn');
+
+  // ================== УТИЛИТЫ ==================
+  function showScreen(el){ el.classList.remove('hidden'); }
+  function hideScreen(el){ el.classList.add('hidden'); }
+  function openModal(m){ m.classList.add('visible'); document.body.style.overflow='hidden'; }
+  function closeModal(m){ m.classList.remove('visible'); document.body.style.overflow=''; }
+  function closeAllModals(){ closeModal(moduleModal); closeModal(quizModal); }
+
+  function safeGet(key){ try { return localStorage.getItem(key); } catch(e){ return null; } }
+  function safeSet(key, val){ try { localStorage.setItem(key, val); } catch(e){} }
+  function safeRemove(key){ try { localStorage.removeItem(key); } catch(e){} }
+
+  function loadResults(){
+    var raw = safeGet(STORAGE_RESULTS);
+    if (!raw) return {};
+    try { return JSON.parse(raw); } catch(e){ return {}; }
+  }
+  function saveResults(obj){ safeSet(STORAGE_RESULTS, JSON.stringify(obj)); }
+
+  function escapeHtml(str){
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+  // ================== ПРИВЕТСТВИЕ ==================
+  function applyGreeting(rawName){
+    var trimmed = (rawName || '').trim();
+    var isAdmin = trimmed.toLowerCase() === ADMIN_NAME;
+    var displayName = isAdmin ? ADMIN_DISPLAY : trimmed;
+    greeting.textContent = 'Добро пожаловать в Академию Физики, ' + displayName + '!';
+    if (isAdmin) {
+      statusPill.classList.add('founder');
+      statusText.textContent = 'Founder';
+    } else {
+      statusPill.classList.remove('founder');
+      statusText.textContent = 'Студент Академии';
+    }
+  }
+
+  // ================== ВХОД / СБРОС ==================
+  function enterHub(){
+    var name = nameInput.value.trim();
+    if (!name) {
+      nameInput.focus();
+      nameInput.style.borderColor = '#ff3b30';
+      setTimeout(function(){ nameInput.style.borderColor=''; }, 1200);
+      return;
+    }
+    safeSet(STORAGE_USER, name);
+    applyGreeting(name);
+    renderModulesGrid();
+    renderQuizzesGrid();
+    renderLevelPanel();
+    hideScreen(welcomeScreen);
+    showScreen(mainHub);
+  }
+  function resetSession(){
+    safeRemove(STORAGE_USER);
+    nameInput.value = '';
+    closeAllModals();
+    resetActiveQuiz();
+    hideScreen(mainHub);
+    showScreen(welcomeScreen);
+    setTimeout(function(){ nameInput.focus(); }, 400);
+  }
+
+  // ================== ТАБЫ ==================
+  function activateTab(tabId){
+    for (var i = 0; i < tabButtons.length; i++) {
+      tabButtons[i].classList.toggle('active', tabButtons[i].getAttribute('data-tab') === tabId);
+    }
+    var panels = document.querySelectorAll('.tab-panel');
+    for (var j = 0; j < panels.length; j++) {
+      panels[j].classList.toggle('active', panels[j].id === 'panel-' + tabId);
+    }
+    var subs = {
+      learn: 'Выберите модуль, чтобы начать исследование.',
+      tests: 'Пройдите тест, чтобы проверить свои знания.',
+      level: 'Здесь отображается ваша статистика по всем темам.'
+    };
+    greetingSub.textContent = subs[tabId] || '';
+
+    if (tabId === 'level') renderLevelPanel();
+    if (tabId === 'tests') renderQuizzesGrid();
+    if (tabId === 'learn') renderModulesGrid();
+  }
+  for (var ti = 0; ti < tabButtons.length; ti++) {
+    tabButtons[ti].addEventListener('click', function(){
+      activateTab(this.getAttribute('data-tab'));
+    });
+  }
+
+  // ================== РЕНДЕР МОДУЛЕЙ ==================
+  function renderModulesGrid(){
+    modulesGrid.innerHTML = '';
+    MODULES.forEach(function(m, idx){
+      var card = document.createElement('article');
+      card.className = 'module-card glass';
+      card.style.animationDelay = (Math.min(idx, 10) * 0.04) + 's';
+      card.innerHTML =
+        '<div class="card-icon">' + escapeHtml(m.icon) + '</div>' +
+        '<h3>' + escapeHtml(m.title) + '</h3>' +
+        '<p>' + escapeHtml(m.desc) + '</p>' +
+        '<span class="card-link">Открыть модуль <span class="arrow">→</span></span>';
+      card.addEventListener('click', function(){ openModule(m); });
+      modulesGrid.appendChild(card);
+    });
+  }
+  function openModule(m){
+    moduleModalTitle.textContent = m.title;
+    moduleModalBody.innerHTML = m.body;
+    openModal(moduleModal);
+  }
+
+  // ================== РЕНДЕР ТЕСТОВ ==================
+  function renderQuizzesGrid(){
+    quizzesGrid.innerHTML = '';
+    var results = loadResults();
+    QUIZZES.forEach(function(qz, idx){
+      var card = document.createElement('article');
+      card.className = 'quiz-card glass';
+      card.style.animationDelay = (idx * 0.08) + 's';
+
+      var best = results[qz.id];
+      var bestHtml = best ? '<div class="best-score">Лучший: ' + best.score + '/' + best.total + '</div>' : '';
+      var savedHtml = best ? '<div class="saved-badge">✓ Сохранено</div>' : '';
+
+      card.innerHTML =
+        savedHtml + bestHtml +
+        '<div class="quiz-num">Тест ' + (idx+1) + ' из ' + QUIZZES.length + '</div>' +
+        '<h3>' + escapeHtml(qz.title) + '</h3>' +
+        '<p>' + escapeHtml(qz.desc) + '</p>' +
+        '<div class="quiz-meta">' +
+          '<span class="chip">✎ ' + qz.questions.length + ' вопросов</span>' +
+          '<span class="chip">⏱ ~5 мин</span>' +
+        '</div>';
+      card.addEventListener('click', function(){ startQuiz(qz); });
+      quizzesGrid.appendChild(card);
+    });
+  }
+
+  // ================== ЛОГИКА ТЕСТА ==================
+  var activeQuiz = null;
+  var quizChecked = false; // флаг: тест уже проверен в текущей сессии модалки
+
+  function startQuiz(qz){
+    activeQuiz = qz;
+    quizChecked = false;
+    quizModalTitle.textContent = qz.title;
+    quizForm.innerHTML = '';
+    quizFeedback.classList.remove('show');
+    quizFeedback.textContent = '';
+    saveStatus.classList.remove('show');
+    saveStatus.classList.remove('improved');
+
+    qz.questions.forEach(function(qItem, qIdx){
+      var qDiv = document.createElement('div');
+      qDiv.className = 'quiz-question';
+      qDiv.setAttribute('data-correct', qItem.correct);
+      var optsHtml = '';
+      qItem.opts.forEach(function(opt, oIdx){
+        optsHtml +=
+          '<label class="quiz-option">' +
+            '<input type="radio" name="q_' + qIdx + '" value="' + oIdx + '" />' +
+            escapeHtml(opt) +
+          '</label>';
+      });
+      qDiv.innerHTML =
+        '<div class="q-num">Вопрос ' + (qIdx+1) + ' / ' + qz.questions.length + '</div>' +
+        '<div class="q-text">' + escapeHtml(qItem.q) + '</div>' +
+        '<div class="quiz-options">' + optsHtml + '</div>';
+      quizForm.appendChild(qDiv);
+    });
+
+    updateQuizProgress();
+    openModal(quizModal);
+  }
+
+  function updateQuizProgress(){
+    if (!activeQuiz) return;
+    var total = activeQuiz.questions.length;
+    var answered = 0;
+    for (var i = 0; i < total; i++) {
+      if (quizForm.querySelector('input[name="q_' + i + '"]:checked')) answered++;
+    }
+    quizProgressText.textContent = answered + ' / ' + total;
+    quizProgressFill.style.width = (answered / total * 100) + '%';
+  }
+
+  function resetActiveQuiz(){
+    if (!activeQuiz) return;
+    quizChecked = false;
+    quizForm.reset();
+    var questions = quizForm.querySelectorAll('.quiz-question');
+    for (var i = 0; i < questions.length; i++) questions[i].classList.remove('correct','wrong');
+    var options = quizForm.querySelectorAll('.quiz-option');
+    for (var j = 0; j < options.length; j++) options[j].classList.remove('selected');
+    quizFeedback.classList.remove('show');
+    quizFeedback.textContent = '';
+    saveStatus.classList.remove('show');
+    saveStatus.classList.remove('improved');
+    updateQuizProgress();
+  }
+
+  /**
+   * Сохранение результата теста в localStorage.
+   * Сохраняется только если новый результат ЛУЧШЕ предыдущего (или это первое прохождение).
+   * Возвращает объект { improved: bool, saved: bool, score, total, prevScore }
+   */
+  function persistQuizResult(quizId, score, total, topic, title){
+    var results = loadResults();
+    var prev = results[quizId];
+    var prevScore = prev ? prev.score : null;
+    var improved = false;
+    var saved = false;
+
+    if (!prev || score > prev.score) {
+      results[quizId] = {
+        score: score,
+        total: total,
+        topic: topic,
+        title: title,
+        date: new Date().toISOString()
+      };
+      saveResults(results);
+      saved = true;
+      if (prev) improved = true;
+    }
+
+    return {
+      improved: improved,
+      saved: saved,
+      score: score,
+      total: total,
+      prevScore: prevScore
+    };
+  }
+
+  function checkQuiz(){
+    if (!activeQuiz) return;
+    var questions = quizForm.querySelectorAll('.quiz-question');
+    var total = questions.length;
+    var correctCount = 0;
+    var allAnswered = true;
+
+    for (var i = 0; i < total; i++) {
+      var q = questions[i];
+      var correctVal = parseInt(q.getAttribute('data-correct'), 10);
+      var selected = q.querySelector('input[type="radio"]:checked');
+      q.classList.remove('correct','wrong');
+      if (!selected) { allAnswered = false; continue; }
+      if (parseInt(selected.value, 10) === correctVal) {
+        q.classList.add('correct');
+        correctCount++;
+      } else {
+        q.classList.add('wrong');
+      }
+    }
+
+    if (!allAnswered) {
+      quizFeedback.textContent = 'Пожалуйста, ответьте на все вопросы перед проверкой.';
+      quizFeedback.classList.add('show');
+      return;
+    }
+
+    var percent = Math.round(correctCount / total * 100);
+    var message;
+    if (correctCount === total) message = '🎉 Превосходно! Все ' + total + ' ответов верны (' + percent + '%).';
+    else if (percent >= 70)     message = '✨ Отличный результат: ' + correctCount + ' из ' + total + ' (' + percent + '%).';
+    else if (percent >= 40)     message = '📘 Хорошая попытка: ' + correctCount + ' из ' + total + ' (' + percent + '%).';
+    else                        message = '📖 Результат: ' + correctCount + ' из ' + total + ' (' + percent + '%).';
+
+    quizFeedback.textContent = message;
+    quizFeedback.classList.add('show');
+
+    // === АВТОМАТИЧЕСКОЕ СОХРАНЕНИЕ В LOCALSTORAGE ===
+    var persistResult = persistQuizResult(
+      activeQuiz.id,
+      correctCount,
+      total,
+      activeQuiz.topic,
+      activeQuiz.title
+    );
+
+    // Показываем статус сохранения
+    if (persistResult.improved) {
+      // Улучшили результат
+      saveStatusIcon.textContent = '↑';
+      saveStatusText.textContent = 'Результат улучшен: ' + persistResult.score + ' / ' + persistResult.total + ' (было ' + persistResult.prevScore + '). Сохранено в «Уровень знаний».';
+      saveStatus.classList.add('improved');
+    } else if (persistResult.saved) {
+      // Первое прохождение
+      saveStatusIcon.textContent = '✓';
+      saveStatusText.textContent = 'Результат сохранён в «Уровень знаний»: ' + persistResult.score + ' / ' + persistResult.total;
+      saveStatus.classList.remove('improved');
+    } else {
+      // Результат не лучше предыдущего — не перезаписываем
+      saveStatusIcon.textContent = 'ℹ';
+      saveStatusText.textContent = 'Сохранён ваш лучший результат: ' + persistResult.prevScore + ' / ' + persistResult.total + '. Текущий: ' + persistResult.score + ' / ' + persistResult.total + '.';
+      saveStatus.classList.remove('improved');
+    }
+    saveStatus.classList.add('show');
+
+    quizChecked = true;
+
+    // Обновляем сетку тестов в фоне (чтобы бейдж "Сохранено" появился сразу)
+    renderQuizzesGrid();
+  }
+
+  // Обработчики внутри теста
+  quizForm.addEventListener('change', function(e){
+    if (e.target && e.target.matches('input[type="radio"]')) {
+      var question = e.target.closest('.quiz-question');
+      if (!question) return;
+      var siblings = question.querySelectorAll('.quiz-option');
+      for (var s = 0; s < siblings.length; s++) siblings[s].classList.remove('selected');
+      var parentLabel = e.target.closest('.quiz-option');
+      if (parentLabel) parentLabel.classList.add('selected');
+      updateQuizProgress();
+    }
+  });
+  checkQuizBtn.addEventListener('click', checkQuiz);
+  resetQuizBtn.addEventListener('click', resetActiveQuiz);
+
+  // ================== УРОВЕНЬ ЗНАНИЙ ==================
+  var TOPIC_META = {
+    mechanics:    { title:'Механика',           icon:'F' },
+    oscillations: { title:'Колебания и волны',  icon:'~' },
+    thermo:       { title:'Термодинамика',      icon:'T' },
+    em:           { title:'Электричество и магнетизм', icon:'I' },
+    quantum:      { title:'Оптика и квантовая', icon:'ℏ' }
+  };
+
+  function renderLevelPanel(){
+    var results = loadResults();
+    var topicKeys = Object.keys(TOPIC_META);
+
+    var totalScore = 0, totalPossible = 0, completedCount = 0;
+    var topicStats = {};
+    topicKeys.forEach(function(k){ topicStats[k] = { score:0, total:0, done:false }; });
+
+    QUIZZES.forEach(function(qz){
+      var r = results[qz.id];
+      if (r) {
+        totalScore += r.score;
+        totalPossible += r.total;
+        completedCount++;
+        if (topicStats[qz.topic]) {
+          topicStats[qz.topic].score += r.score;
+          topicStats[qz.topic].total += r.total;
+          topicStats[qz.topic].done = true;
+        }
+      } else {
+        totalPossible += qz.questions.length;
+        if (topicStats[qz.topic]) topicStats[qz.topic].total += qz.questions.length;
+      }
+    });
+
+    var overallPercent = totalPossible > 0 ? Math.round(totalScore / totalPossible * 100) : 0;
+
+    levelSummaryEl.innerHTML =
+      summaryCardHtml(overallPercent + '%', 'Общий уровень') +
+      summaryCardHtml(completedCount + ' / ' + QUIZZES.length, 'Тестов пройдено') +
+      summaryCardHtml(totalScore + ' / ' + totalPossible, 'Правильных ответов') +
+      summaryCardHtml(topicKeys.length - completedCount + ' тем осталось', 'До завершения');
+
+    topicsListEl.innerHTML = '';
+    topicKeys.forEach(function(k, idx){
+      var meta = TOPIC_META[k];
+      var st = topicStats[k];
+      var percent = st.total > 0 ? Math.round(st.score / st.total * 100) : 0;
+      var level = !st.done ? 'none' : (percent >= 70 ? 'high' : (percent >= 40 ? 'medium' : 'low'));
+      var scoreClass = level === 'none' ? 'none' : level;
+      var scoreText = st.done ? (st.score + '/' + st.total + ' · ' + percent + '%') : 'не пройдено';
+
+      var row = document.createElement('div');
+      row.className = 'topic-row glass';
+      row.style.animationDelay = (idx * 0.08) + 's';
+      row.innerHTML =
+        '<div>' +
+          '<div class="topic-head">' +
+            '<div class="topic-icon">' + escapeHtml(meta.icon) + '</div>' +
+            '<div>' +
+              '<div class="topic-title">' + escapeHtml(meta.title) + '</div>' +
+              '<div class="topic-sub">' + (st.done ? 'Пройдено · лучший результат' : 'Тест ещё не пройден') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="progress-bar"><div class="progress-fill ' + level + '" data-target="' + percent + '"></div></div>' +
+        '</div>' +
+        '<div class="topic-score ' + scoreClass + '">' + scoreText + '</div>';
+      topicsListEl.appendChild(row);
+    });
+
+    requestAnimationFrame(function(){
+      setTimeout(function(){
+        var fills = topicsListEl.querySelectorAll('.progress-fill');
+        for (var i = 0; i < fills.length; i++) {
+          fills[i].style.width = fills[i].getAttribute('data-target') + '%';
+        }
+      }, 100);
+    });
+
+    var strengths = [], weaknesses = [];
+    topicKeys.forEach(function(k){
+      var st = topicStats[k];
+      if (!st.done) return;
+      var p = st.total > 0 ? Math.round(st.score / st.total * 100) : 0;
+      if (p >= 70) strengths.push(TOPIC_META[k].title);
+      else if (p < 40) weaknesses.push(TOPIC_META[k].title);
+    });
+
+    var strengthsHtml = strengths.length
+      ? '<ul>' + strengths.map(function(t){ return '<li><span class="dot-ind"></span>' + escapeHtml(t) + '</li>'; }).join('') + '</ul>'
+      : '<div class="empty-note">Пройдите тесты, чтобы увидеть сильные стороны.</div>';
+    var weaknessesHtml = weaknesses.length
+      ? '<ul>' + weaknesses.map(function(t){ return '<li><span class="dot-ind"></span>' + escapeHtml(t) + ' — повторите теорию</li>'; }).join('') + '</ul>'
+      : '<div class="empty-note">Слабых тем не обнаружено. Отличная работа!</div>';
+
+    recommendationsEl.innerHTML =
+      '<div class="rec-block strengths">' +
+        '<h4>💪 Сильные стороны</h4>' + strengthsHtml +
+      '</div>' +
+      '<div class="rec-block weaknesses">' +
+        '<h4>📚 Что подтянуть</h4>' + weaknessesHtml +
+      '</div>';
+  }
+
+  function summaryCardHtml(num, label){
+    return '<div class="summary-card glass">' +
+             '<div class="big-num">' + escapeHtml(num) + '</div>' +
+             '<div class="big-label">' + escapeHtml(label) + '</div>' +
+           '</div>';
+  }
+
+  clearResultsBtn.addEventListener('click', function(){
+    if (!confirm('Сбросить все сохранённые результаты тестов? Это действие нельзя отменить.')) return;
+    safeRemove(STORAGE_RESULTS);
+    renderQuizzesGrid();
+    renderLevelPanel();
+  });
+
+  // ================== ЗАКРЫТИЕ МОДАЛОК ==================
+  var closeButtons = document.querySelectorAll('[data-close]');
+  for (var k = 0; k < closeButtons.length; k++) {
+    closeButtons[k].addEventListener('click', function(){
+      var overlay = this.closest('.modal-overlay');
+      if (overlay) closeModal(overlay);
+    });
+  }
+  [moduleModal, quizModal].forEach(function(overlay){
+    overlay.addEventListener('click', function(e){
+      if (e.target === overlay) closeModal(overlay);
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') closeAllModals();
+  });
+
+  // ================== КНОПКИ ==================
+  enterBtn.addEventListener('click', enterHub);
+  nameInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); enterHub(); }
+  });
+  resetBtn.addEventListener('click', resetSession);
+
+  // ================== АВТОПИЛОТ СЕССИИ ==================
+  (function initSession(){
+    var savedName = safeGet(STORAGE_USER);
+    if (savedName && savedName.trim().length > 0) {
+      applyGreeting(savedName);
+      renderModulesGrid();
+      renderQuizzesGrid();
+      renderLevelPanel();
+      hideScreen(welcomeScreen);
+      showScreen(mainHub);
+    } else {
+      showScreen(welcomeScreen);
+      hideScreen(mainHub);
+      setTimeout(function(){ nameInput.focus(); }, 300);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
